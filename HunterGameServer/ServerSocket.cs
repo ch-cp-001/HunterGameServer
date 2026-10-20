@@ -32,7 +32,7 @@ namespace HunterGameServer
         // 清除待删除列表中的所有socket
         private void DeleteSocket()
         {
-            while (true)
+            while (!isClose)
             {
                 if (delSocLists.Count > 0)
                 {
@@ -42,6 +42,7 @@ namespace HunterGameServer
                         {
                             if (clientSocketDic.ContainsKey(delSocLists[i]))
                             {
+                                clientSocketDic[delSocLists[i]].Close();
                                 clientSocketDic.Remove(delSocLists[i]);
                                 Console.WriteLine("连接删除：" + delSocLists[i]);
                             }
@@ -49,6 +50,8 @@ namespace HunterGameServer
                         delSocLists.Clear();
                     }
                 }
+                // 线程休眠，降低执行次数
+                Thread.Sleep(1000);
             }
         }
 
@@ -58,6 +61,7 @@ namespace HunterGameServer
             if (!isClose){
                 acceptE.Completed += (s, args) =>
                 {
+                    Console.WriteLine("检测到连接请求，正在分配空间");
                     if (args.SocketError == SocketError.Success)
                     {
                         ClientSocket clientSocket = new ClientSocket(args.AcceptSocket);

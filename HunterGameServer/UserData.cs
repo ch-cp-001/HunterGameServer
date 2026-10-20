@@ -1,29 +1,29 @@
+using MessagePack;
 using System.Text;
 
 namespace HunterGameServer
 {
+    [MessagePackObject]
     public class UserData : BaseData
     {
-        private static UserData instance = new UserData();
-        public static UserData Instance => instance;
-
         // 标识 (0表示客户端注册，1表示客户端登录，2客户端修改昵称，3客户端修改密码，4服务端发送新账户数据给客户端)
-        public short flag;
+        [Key(0)] public short flag;
         // 用户账号
-        public string userName;
+        [Key(1)] public string userName="";
         // 用户密码
-        public string password;
+        [Key(2)] public string password="";
         // 昵称
-        public string nickName;
+        [Key(3)] public string nickName="";
         // 等级
-        public int lev;
+        [Key(4)] public int lev;
 
         // 获取字节数组长度  字符串字节长度+字符串
         public override int GetByteNum()
         {
             // flag,username,password,nickname,lev
-            return 2+4 + Encoding.UTF8.GetByteCount(userName) + 4 + Encoding.UTF8.GetByteCount(password)
-                + 4 + Encoding.UTF8.GetByteCount(password) + 4;
+            int length = 2+4 + Encoding.UTF8.GetByteCount(userName) + 4 + Encoding.UTF8.GetByteCount(password)
+                + 4 + Encoding.UTF8.GetByteCount(nickName) + 4;
+            return length;
         }
 
         // 序列化

@@ -29,16 +29,21 @@
             {
                 if(UserMgr.Instance.Check(msg.data.userName, msg.data.password))
                 {
-                    boolMsg.flag = true;
                     // 将账户信息发送给客户端
-                    msg.data = UserMgr.Instance.GetUserData(msg.data.userName);
-
+                    UserMsg userMsg = new UserMsg();
+                    userMsg.data = UserMgr.Instance.GetUserData(msg.data.userName);
+                    userMsg.data.flag = 4;
+                    socket.MySendAsync(userMsg);
+                    boolMsg.flag = true;
+                    socket.MySendAsync(boolMsg);
                 }
                 else
+                {
                     boolMsg.flag = false;
-                Console.WriteLine("登录"+ boolMsg.flag  );
-                socket.MySendAsync(boolMsg);
-                socket.MySendAsync(msg);                
+                    socket.MySendAsync(boolMsg);
+                }
+                Console.WriteLine("登录" + boolMsg.flag);
+
             }
             // 修改昵称
             else if (msg.data.flag == 2)
@@ -46,6 +51,7 @@
                 // 这里暂时就不做检测了
                 UserMgr.Instance.ModifyNickName(msg.data.userName, msg.data.nickName);
                 boolMsg.flag = true;
+                Console.WriteLine("账户："+ msg.data.userName + "成功修改昵称为："+ msg.data.nickName);
                 socket.MySendAsync(boolMsg);
             }
             // 修改密码
@@ -53,6 +59,7 @@
             {
                 UserMgr.Instance.ModifyPwd(msg.data.userName, msg.data.password);
                 boolMsg.flag = true;
+                Console.WriteLine("账户："+ msg.data.userName + "成功修改密码为："+ msg.data.password);
                 socket.MySendAsync(boolMsg);
             }
         }

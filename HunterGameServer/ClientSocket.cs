@@ -57,7 +57,11 @@ namespace HunterGameServer
                     Console.WriteLine("发送失败{0}", args.SocketError);
                 }
             };
+            // 开启异步接收消息
             MyReceiveAsync();
+
+            // 检测心跳消息
+            CheckHeartMsgAsync();
         }
         // 断开连接
         public void Close()
@@ -81,7 +85,7 @@ namespace HunterGameServer
             Array.Copy(receiveBytes, 0, cacheBytes, cacheBytesNum, receiveNum);
             cacheBytesNum += receiveNum;
 
-            while (true)
+            while (socket != null && isConnect)
             {
                 bytesNum = -1;
                 // 缓存中的字节长度超过8可以解析类型和长度
@@ -142,7 +146,6 @@ namespace HunterGameServer
             {
                 Console.WriteLine("客户端{0}断开连接", id);
                 Program.server.AddDelScoList(this);
-                Close();
             }
             else if (msg.GetTypeId() == 999)
             {
@@ -164,6 +167,17 @@ namespace HunterGameServer
             }
         }
 
+        private async void CheckHeartMsgAsync()
+        {
+            await Task.Delay(15);
+
+            while (socket != null && isConnect)
+            {
+                CheckHeartMsg();
+                await Task.Delay(30);
+            }
+        }
+        
         // 检查链接的心跳状态，超时则断开连接
         public void CheckHeartMsg()
         {
@@ -177,7 +191,7 @@ namespace HunterGameServer
         // 异步获取消息
         public void MyReceiveAsync()
         {
-            if (isConnect)
+            if (socket != null && isConnect)
             {
                 byte[] bytes = new byte[1024 * 1024];
                 receiveE.SetBuffer(bytes,0,bytes.Length);
@@ -189,7 +203,7 @@ namespace HunterGameServer
         // 异步发送消息
         public void MySendAsync(BaseMsg msg)
         {
-            if (isConnect)
+            if (socket != null && isConnect)
             {
                 msg.id = msgId++;
                 sendE.SetBuffer(msg.Writing());
