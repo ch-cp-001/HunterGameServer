@@ -61,17 +61,20 @@ namespace HunterGameServer
             if (!isClose){
                 acceptE.Completed += (s, args) =>
                 {
-                    Console.WriteLine("检测到连接请求，正在分配空间");
                     if (args.SocketError == SocketError.Success)
                     {
                         ClientSocket clientSocket = new ClientSocket(args.AcceptSocket);
-                        StringMsg msg = new StringMsg();
-                        msg.str = "欢迎登录猎人游戏服务器";
-                        clientSocket.MySendAsync(msg);
+                        //EnemyNameMsg msg = new EnemyNameMsg();
+                        //msg.name = "欢迎登录猎人游戏服务器";
+                        //clientSocket.MySendAsync(msg);
+                        Console.WriteLine("本次连接的socketId为"+clientSocket.id);
                         clientSocketDic.Add(clientSocket.id, clientSocket);
 
                         if (!isClose)
-                            socket.AcceptAsync();
+                        {
+                            acceptE.AcceptSocket = null;
+                            socket.AcceptAsync(acceptE);
+                        }
                     }
                     else
                     {
@@ -94,9 +97,19 @@ namespace HunterGameServer
             }
         }
 
+        public void Send(int socketId, BaseMsg msg)
+        {
+            if (clientSocketDic.ContainsKey(socketId))
+            {
+                clientSocketDic[socketId].MySendAsync(msg);
+            }
+        }
+
         // 关闭服务器
         public void Close()
         {
+            // 
+            Console.WriteLine("关闭服务器");
             isClose = true;
             // 断开所有客户端链接
             lock (clientSocketDic)
@@ -113,9 +126,9 @@ namespace HunterGameServer
         }
 
         // 添加待断开连接
-        public void AddDelScoList(ClientSocket socket)
+        public void AddDelScoList(int id)
         {
-            delSocLists.Add(socket.id);
+            delSocLists.Add(id);
         }
     }
 }

@@ -4,7 +4,7 @@ public class HeartMsg : BaseMsg
 {
     public override int GetByteNum()
     {
-        return 8;
+        return 12;
     }
 
     public override int GetTypeId()
@@ -17,7 +17,15 @@ public class HeartMsg : BaseMsg
         byte[] bytes = new byte[GetByteNum()];
         int index = 0;
         WriteInt(bytes,GetTypeId(),ref index);
-        WriteInt(bytes,0,ref index);
+        WriteInt(bytes,GetByteNum()-8,ref index);
+        WriteInt(bytes,id,ref index);
         return bytes;
+    }
+
+    public override int Reading(byte[] bytes, int beginIndex = 0)
+    {
+        int index = beginIndex;
+        id = ReadInt(bytes,ref index);
+        return index - beginIndex;
     }
 }

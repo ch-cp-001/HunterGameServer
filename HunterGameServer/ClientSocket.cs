@@ -15,7 +15,6 @@ namespace HunterGameServer
         public byte[] cacheBytes = new byte[1024 * 1024];
         public int cacheBytesNum;
 
-
         // 心跳消息超时时间
         public static int TIMEOUT_HEARTMSG = 60;
         // 心跳消息上次时间
@@ -27,23 +26,28 @@ namespace HunterGameServer
         // 发送的消息id
         private int msgId= 0;
 
+        // 当前连接关联的用户
+        private string username;
+
         public ClientSocket(Socket socket)
         {
             this.socket = socket;
-            id = SOCKET_INDEX;
-            SOCKET_INDEX++;
+            id = ClientSocket.SOCKET_INDEX++;
 
             receiveE = new SocketAsyncEventArgs();
             receiveE.Completed += (s, args) =>
             {
-                Console.WriteLine("接收到消息");
-                HandleReceiveMsg(args.Buffer, args.BytesTransferred);
-
-                if (isConnect)
+                if (args.SocketError == SocketError.Success)
                 {
-                    args.SetBuffer(0, args.Buffer.Length);
-                    socket.ReceiveAsync(receiveE);
+                    HandleReceiveMsg(args.Buffer, args.BytesTransferred);
+
+                    if (socket != null && isConnect)
+                    {
+                        args.SetBuffer(0, args.Buffer.Length);
+                        socket.ReceiveAsync(receiveE);
+                    }
                 }
+                    
             };
             sendE = new SocketAsyncEventArgs();
             sendE.Completed += (s, args) =>
@@ -61,7 +65,7 @@ namespace HunterGameServer
             MyReceiveAsync();
 
             // 检测心跳消息
-            CheckHeartMsgAsync();
+            //CheckHeartMsgAsync();
         }
         // 断开连接
         public void Close()
@@ -78,13 +82,14 @@ namespace HunterGameServer
         // 处理接收到的消息，根据缓存的消息长度先解析消息体类型和消息体长度，然后解析消息体
         public void HandleReceiveMsg(byte[] receiveBytes, int receiveNum)
         {
+            Console.WriteLine("处理接收的消息"+ receiveBytes.Length+"，长度为"+receiveNum);
             int typeId = 0;     // 类型ID
             int bytesNum = 0;   // 消息字节长度
             int index = 0;      // 已处理消息长度
             // 将接收到的消息复制到消息缓存中
             Array.Copy(receiveBytes, 0, cacheBytes, cacheBytesNum, receiveNum);
             cacheBytesNum += receiveNum;
-
+            Console.WriteLine("cacheNum"+cacheBytesNum);
             while (socket != null && isConnect)
             {
                 bytesNum = -1;
@@ -93,9 +98,7 @@ namespace HunterGameServer
                 {
                     // 类型ID
                     typeId = BitConverter.ToInt32(cacheBytes, index);
-                    index += 4;
-                    if (typeId == 1001)
-                        Console.WriteLine("处理用户信息");
+                    index += 4; 
                     // 消息字节长度
                     bytesNum = BitConverter.ToInt32(cacheBytes, index);
                     index += 4;
@@ -104,15 +107,8 @@ namespace HunterGameServer
                 if (bytesNum >= 0 && cacheBytesNum - index >= bytesNum)
                 {
                     BaseMsg baseMsg = null;
-                    if (typeId == 1010)
-                        baseMsg = new QuitMsg();
-                    else if(typeId == 999)
-                        baseMsg = new HeartMsg();
-                    else
-                    {
-                        baseMsg = MsgPool.Instance.GetMsg(typeId);
-                        baseMsg.Reading(cacheBytes, index);
-                    }
+                    baseMsg = MsgPool.Instance.GetMsg(typeId);
+                    baseMsg.Reading(cacheBytes, index);
                     index += bytesNum;
                     if (baseMsg != null)
                         ThreadPool.QueueUserWorkItem(Handle, baseMsg);
@@ -142,39 +138,26 @@ namespace HunterGameServer
         public void Handle(object obj)
         {
             BaseMsg msg = obj as BaseMsg;
-            if(msg.GetTypeId() == 1010)
+            BaseHandler handler = MsgPool.Instance.GetHandler(msg.GetTypeId());
+            if (handler != null)
             {
-                Console.WriteLine("客户端{0}断开连接", id);
-                Program.server.AddDelScoList(this);
-            }
-            else if (msg.GetTypeId() == 999)
-            {
-                frontHeartTime = DateTime.Now.Ticks / TimeSpan.TicksPerSecond;
-                Console.WriteLine("收到心跳消息");
+                handler.message = msg;
+                handler.Handle(this);
             }
             else
             {
-                BaseHandler handler = MsgPool.Instance.GetHandler(msg.GetTypeId());
-                if (handler != null)
-                {
-                    handler.message = msg;
-                    handler.Handle(this);
-                }
-                else
-                {
-                    Console.WriteLine(msg.GetTypeId() + "类型数据没有相应处理方法，请添加");
-                }
+                Console.WriteLine(msg.GetTypeId() + "类型数据没有相应处理方法，请添加");
             }
         }
 
         private async void CheckHeartMsgAsync()
         {
-            await Task.Delay(15);
+            await Task.Delay(15*1000);
 
             while (socket != null && isConnect)
             {
                 CheckHeartMsg();
-                await Task.Delay(30);
+                await Task.Delay(30 * 1000);
             }
         }
         
@@ -184,7 +167,8 @@ namespace HunterGameServer
             long time = DateTime.Now.Ticks / TimeSpan.TicksPerSecond - frontHeartTime;
             if (frontHeartTime != -1 && time > TIMEOUT_HEARTMSG)
             {
-                Program.server.AddDelScoList(this);
+                Console.WriteLine("客户端连接"+id+"心跳检测超时。"+time);
+                Program.server.AddDelScoList(id);
             }
         }
 
@@ -207,9 +191,19 @@ namespace HunterGameServer
             {
                 msg.id = msgId++;
                 sendE.SetBuffer(msg.Writing());
-                Console.WriteLine("向客户端"+id+"发送消息"+msg.id);
+                Console.WriteLine("向客户端"+id+"发送消息"+msg.id+"，消息类型是"+msg.GetTypeId());
                 socket.SendAsync(sendE);
             }
+        }
+
+        public string GetUserName()
+        {
+            return username;
+        }
+
+        public void ChangeUserName(string username)
+        {
+            this.username = username; 
         }
     }
 }

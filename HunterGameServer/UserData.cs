@@ -17,6 +17,7 @@ namespace HunterGameServer
         // 等级
         [Key(4)] public int lev;
 
+
         // 获取字节数组长度  字符串字节长度+字符串
         public override int GetByteNum()
         {

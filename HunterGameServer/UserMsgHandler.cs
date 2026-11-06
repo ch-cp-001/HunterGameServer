@@ -36,6 +36,13 @@
                     socket.MySendAsync(userMsg);
                     boolMsg.flag = true;
                     socket.MySendAsync(boolMsg);
+
+                    // 在usermgr中记录用户与socket的对应关系
+                    UserMgr.Instance.AddSocket(msg.data.userName, socket.id);
+                    // 同时修改socket中记录的username信息
+                    socket.ChangeUserName(msg.data.userName);
+                    // 修改用户状态为在线
+                    UserMgr.Instance.ChangeUserState(msg.data.userName, UserState.Online);
                 }
                 else
                 {
