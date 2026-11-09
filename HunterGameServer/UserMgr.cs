@@ -159,6 +159,15 @@ namespace HunterGameServer
             return matchingUsers;
         }
 
+        public void LevUp(string username)
+        {
+            if (CheckExist(username))
+            {
+                userInfos.userDic[username].lev++;
+                Serialize();
+            }
+        }
+
         // 序列化存储所有账户信息
         public void Serialize()
         {

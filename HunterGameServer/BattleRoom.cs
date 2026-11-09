@@ -30,28 +30,30 @@ namespace HunterGameServer
         private MatchMsg matchMsg;
 
         // 记录当前可移动范围
-        private List<int> hunterMoveScope;
-        private List<int> preyMoveScope;
+        private List<int> hunterMoveScope = new List<int>();
+        private List<int> preyMoveScope = new List<int>();
 
         // 计算移动范围时使用的坐标
         private int scopeX = -1;
         private int scopeY = -1;
         private bool preType; // 记录上次计算可移动范围的对象类型，更多人时可采用id或账户区别玩家
 
-        private int hunterTurn = 0;   // 回合数
+        private int hunterTurn = 1;   // 回合数
         private PlayerDo hunterDo;  // 当前回合猎人操作
         MovePathMsg hunterMoveMsg = new MovePathMsg();
-        private int hunterMoveX;    // 记录猎人本次移动目标地点
+        private int hunterMoveX;
         private int hunterMoveY;
 
-
-        private int preyTurn = 0;   // 回合数
+        private int preyTurn = 1;   // 回合数
         private PlayerDo preyDo;
         MovePathMsg preyMoveMsg = new MovePathMsg();
         private int preyMoveX;
         private int preyMoveY;
 
         private int maxTurn = 10;   // 游戏结束回合数
+
+        EnemyPosMsg enemyPosMsg = new EnemyPosMsg();
+        BattleOverMsg battleOverMsg = new BattleOverMsg();
 
         public BattleRoom(int roomId)
         {
@@ -94,6 +96,7 @@ namespace HunterGameServer
                 Console.WriteLine("加入角色"+username+"，身份为猎人");
                 hunter = new PlayerData();
                 hunter.username = username;
+                hunter.type = true;
                 hunterId = UserMgr.Instance.GetUserSocket(hunter.username);
                 Program.server.Send(hunterId, matchMsg);
             }
@@ -102,6 +105,7 @@ namespace HunterGameServer
                 Console.WriteLine("加入角色"+username+"，身份为猎物");
                 prey = new PlayerData();
                 prey.username = username;
+                prey.type = false;
                 preyId = UserMgr.Instance.GetUserSocket(prey.username);
                 Program.server.Send(preyId, matchMsg);
             }
@@ -149,6 +153,13 @@ namespace HunterGameServer
         public void SendStartMsg()
         {
             Console.WriteLine("发送战斗房间消息");
+            // 发送回合数消息
+            BattleTurnMsg turnMsg = new BattleTurnMsg();
+            turnMsg.turn = hunterTurn;
+            turnMsg.maxTurn = maxTurn;
+            Program.server.Send(hunterId, turnMsg);
+            Program.server.Send(preyId, turnMsg);
+           
             PlayerMsg hunterMsg = new PlayerMsg();
             hunterMsg.data = hunter;
             PlayerMsg preyMsg = new PlayerMsg();
@@ -225,15 +236,14 @@ namespace HunterGameServer
             if (type)
             {
                 if (hunterMoveScope.Contains(index)) return;
-                if (hunter.posX == x && hunter.posY == y) return;
-                hunterMoveScope.Add(index);
+                if (hunter.posX != x || hunter.posY != y)
+                    hunterMoveScope.Add(index);
             }
             else
             {
                 if (preyMoveScope.Contains(index)) return;
-                if ((hunter.posX == x && hunter.posY == y) || (prey.posX == x && prey.posY == y))
-                    return;
-                preyMoveScope.Add(index);
+                if ((hunter.posX != x || hunter.posY != y) && (prey.posX != x || prey.posY != y))                    
+                    preyMoveScope.Add(index);
             }                       
 
             num--;
@@ -283,23 +293,23 @@ namespace HunterGameServer
                 if (type)
                 {
                     hunterMoveMsg.path = ASharpNavigation.Instance.GetPath(hunter.posX,hunter.posY,endX,endY);
-                    
-                    hunterTurn++;
-                    hunterDo = PlayerDo.Move;
                     hunterMoveX = endX;
                     hunterMoveY = endY;
+                    hunterTurn++;
+                    hunterDo = PlayerDo.Move;
                 }
                 else
-                {
+                {  
                     preyMoveMsg.path = ASharpNavigation.Instance.GetPath(prey.posX, prey.posY, endX, endY);
-                    //Program.server.Send(preyId, msg);
-                    preyTurn ++;
-                    preyDo = PlayerDo.Move;
                     preyMoveX = endX;
                     preyMoveY = endY;
+                    preyTurn ++;
+                    preyDo = PlayerDo.Move;
                 }
                 // 路径数据发送回客户端
-
+               
+                // 增加对应回合数，当两边回合数相同时再发送操作信息
+                SendDoMsg();
             }
             else
             {
@@ -308,22 +318,36 @@ namespace HunterGameServer
                 msg.flag = false;
                 Program.server.Send(type? hunterId:preyId, msg);
             }
-
-            // 增加对应回合数，当两边回合数相同时再发送操作信息
-            if (hunterTurn == preyTurn)
-                SendDoMsg();
         }
-        
+
+        // 玩家选择休息的时候执行的逻辑
+        public void  PlayerWait(bool type)
+        {
+            if (type)
+            {
+                hunterTurn++;
+                hunterDo = PlayerDo.Wait;
+            }
+            else
+            {
+                preyTurn++;
+                preyDo = PlayerDo.Wait;
+            }
+            SendDoMsg();
+        }
+
         // 向客户端发送玩家操作消息
         private void SendDoMsg()
         {
+            if (hunterTurn != preyTurn) return;
             switch (hunterDo)
             {
                 case PlayerDo.Move:
                     Program.server.Send(hunterId, hunterMoveMsg);
-                    EnemyPosMsg enemyPosMsg = new EnemyPosMsg();
-                    enemyPosMsg.x = hunterMoveX;
-                    enemyPosMsg.y = hunterMoveY;
+                    hunter.posX = hunterMoveX;
+                    hunter.posY = hunterMoveY;
+                    enemyPosMsg.x = hunter.posX;
+                    enemyPosMsg.y = hunter.posY;
                     Program.server.Send(preyId, enemyPosMsg);    // 将猎人本次移动目标点发给猎物，用于再猎物侧显示敌人移动
                     break;
                 case PlayerDo.Atk:
@@ -338,9 +362,10 @@ namespace HunterGameServer
             {
                 case PlayerDo.Move:
                     Program.server.Send(preyId, preyMoveMsg);
-                    EnemyPosMsg enemyPosMsg = new EnemyPosMsg();
-                    enemyPosMsg.x = preyMoveX;
-                    enemyPosMsg.y = preyMoveY;
+                    prey.posX = preyMoveX;
+                    prey.posY = preyMoveY;
+                    enemyPosMsg.x = prey.posX;
+                    enemyPosMsg.y = prey.posY;
                     Program.server.Send(hunterId, enemyPosMsg);    // 将猎物本次移动目标点发给猎人，用于再猎人侧显示敌人移动
                     break;
                 case PlayerDo.Atk:
@@ -352,27 +377,63 @@ namespace HunterGameServer
             }
 
             // 发送回合数信息
-            BattleTurnMsg msg = new BattleTurnMsg();
-            msg.turn = hunterTurn;
-            msg.maxTurn = maxTurn;
-            Program.server.Send(hunterId,msg);
-            Program.server.Send(preyId,msg);
+            if(hunterTurn <= maxTurn)
+            {
+                BattleTurnMsg msg = new BattleTurnMsg();
+                msg.turn = hunterTurn;
+                msg.maxTurn = maxTurn;
+                Program.server.Send(hunterId, msg);
+                Program.server.Send(preyId, msg);
+            }
+            
         }
-
-
+       
         public TerrainData GetTerrainData()
         {
             return terrain;
         }
 
-        //public TerrainMsg Test()
-        //{
-        //    CreateTerrainData();
+        // 检测战斗结果
+        public void BattleResCheck()
+        {
+            // 没抓到，猎物胜利
+            if (hunterTurn > maxTurn)
+            {
+                battleOverMsg.res = true;
+                Program.server.Send(preyId, battleOverMsg);
+                battleOverMsg.res = false;
+                Program.server.Send(hunterId, battleOverMsg);
+                // 猎物升级
+                UserMgr.Instance.LevUp(prey.username);
+            }
+            else if (hunter.posX == prey.posX && hunter.posY == prey.posY)
+            {
+                // 猎物被抓
+                battleOverMsg.res = true;
+                Program.server.Send(preyId, battleOverMsg);
+                battleOverMsg.res = false;
+                Program.server.Send(hunterId, battleOverMsg);
+                // 猎人升级
+                UserMgr.Instance.LevUp(hunter.username);
+            }
+            // 无事发生
+            else return;
+            Destory();
+        }
 
-        //    TerrainMsg msg = new TerrainMsg();
-        //    msg.data = terrain;
-        //    return msg;
-        //}
+        private void Destory()
+        {
+            // 战斗结束后将玩家状态调整为在线，然后关闭房间
+            UserMgr.Instance.ChangeUserState(hunter.username, UserState.Online);
+            UserMgr.Instance.ChangeUserState(prey.username, UserState.Online);
+            hunterMoveScope.Clear();
+            preyMoveScope.Clear();
+            hunterMoveMsg = null;
+            preyMoveMsg = null;
+            enemyPosMsg = null;
+            battleOverMsg = null;
+            BattleRoomMgr.Instance.DestoryRoom(roomId);
+        }
 
     }
 

@@ -10,6 +10,7 @@ namespace HunterGameServer
     {
         public override void Handle(ClientSocket socket)
         {
+            Console.WriteLine("处理移动目标消息");
             MovePosMsg msg = message as MovePosMsg;
             if (msg != null)
             {

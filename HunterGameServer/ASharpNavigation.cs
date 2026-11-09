@@ -31,7 +31,6 @@ public class ASharpNavigation
         startList = new List<ASharpData>();
         endList = new List<ASharpData>();
         handleIndex = new List<int>();
-        res = new List<int>();
     }
 
     public void SetTerrain(TerrainData terrainData)
@@ -44,7 +43,6 @@ public class ASharpNavigation
         startList.Clear();
         endList.Clear();
         handleIndex.Clear();
-        res.Clear();
     }
 
     // 提供外部使用的获取路径方法，传入开始坐标和结束坐标，返回路径索引的列表
@@ -56,7 +54,7 @@ public class ASharpNavigation
         this.endX = endX;
         this.endY = endY;
         
-        
+        res = new List<int>();
         // 计算目标位置索引
         int endIndex = endX + endY * terrain.width;
         

@@ -19,11 +19,11 @@ public class MsgPool
 		// 1006 terrainmsg
 		// 1007 enemyname
 		Register(1008,typeof(UserQuitMsg),typeof(UserQuitMsgHandler));
-		Register(1009,typeof(MoveMsg), typeof(MoveMsgHandler));
+		Register(1009,typeof(OperationMsg), typeof(OperationMsgHandler));
 
 		Register(1010,typeof(QuitMsg),typeof(QuitMsgHandler));
 		Register(1013,typeof(MovePosMsg),typeof(MovePosMsgHandler));
-		//Register(1014,typeof(MovePathMsg),typeof(MovePathMsgHandler));
+		Register(1017,typeof(TurnOverMsg),typeof(TurnOverMsgHandler));
 
 	}
 	public void Register(int id,Type baseMsg,Type baseHandler)

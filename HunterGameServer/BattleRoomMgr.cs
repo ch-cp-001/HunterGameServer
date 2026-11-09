@@ -18,7 +18,7 @@ namespace HunterGameServer
 
         private List<string> matchUsers;
 
-        private bool isStart;
+        private bool isStart;        
 
         public bool IsStart()
         {
@@ -36,26 +36,38 @@ namespace HunterGameServer
         // 一个线程专门用于创建对战房间，筛选合适的匹配中用户，创建一个战斗房间类，用户随机分配猎人猎物角色，
         // 生成地图，初始化玩家位置，
         // 将地图数据，玩家位置发送给客户端
-        private void MatchUser()
+        private async void MatchUser()
         {
-            while (true)
+            while (isStart)
             {
-                matchUsers = UserMgr.Instance.GetMatchUsers();
-                if (matchUsers != null && matchUsers.Count >= 2)
+                try
                 {
-                    string name1 = matchUsers[0];
-                    string name2 = matchUsers[1];
-                    Console.WriteLine("创建战斗房间"+roomId+"，加入"+ name1 +"和"+ name2);
-                    BattleRoom room = new BattleRoom(roomId);
-                    room.Adduser(name1);
-                    UserMgr.Instance.ChangeUserState(name1,UserState.Battling);
-                    room.Adduser(name2);
-                    UserMgr.Instance.ChangeUserState(name2,UserState.Battling);
-                    room.Prepare();                    
-                    rooms.Add(roomId++, room);
-                }
+                    matchUsers = UserMgr.Instance.GetMatchUsers();
+                    if (matchUsers != null && matchUsers.Count >= 2)
+                    {
+                        string name1 = matchUsers[0];
+                        string name2 = matchUsers[1];
+                        Console.WriteLine("创建战斗房间" + roomId + "，加入" + name1 + "和" + name2);
+                        BattleRoom room = new BattleRoom(roomId);
+                        room.Adduser(name1);
+                        UserMgr.Instance.ChangeUserState(name1, UserState.Battling);
+                        room.Adduser(name2);
+                        UserMgr.Instance.ChangeUserState(name2, UserState.Battling);
+                        room.Prepare();
+                        rooms.Add(roomId++, room);
+                    }
 
-                Task.Delay(1000);
+                    await Task.Delay(1000);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("匹配失败"+e.Message);
+                }
+                finally
+                {
+                    isStart = false;
+                }
+                
             }
         }
 
@@ -64,6 +76,15 @@ namespace HunterGameServer
             if(rooms.ContainsKey(roomId))
                 return rooms[roomId];
             return null;
+        }
+
+        // 房间战斗结束后销毁
+        public void DestoryRoom(int roomId)
+        {
+            if (rooms.ContainsKey(roomId))
+            {
+                rooms.Remove(roomId);
+            }
         }
     }
 }
