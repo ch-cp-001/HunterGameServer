@@ -192,11 +192,13 @@ namespace HunterGameServer
         public List<int> GetMoveScope(bool type)
         {
             int movelength = type ? 2 : 1 + 1;
+            Console.WriteLine(type+"，movelength="+movelength);
             // 猎人
             if (type)
             {
                 if (scopeX == hunter.posX && scopeY == hunter.posY && preType)
                     return hunterMoveScope;
+                preType = true;
                 scopeX = hunter.posX;
                 scopeY = hunter.posY;
                 hunterMoveScope.Clear();
@@ -208,6 +210,7 @@ namespace HunterGameServer
             {
                 if (scopeX == prey.posX && scopeY == prey.posY && !preType)
                     return preyMoveScope;
+                preType = false;
                 scopeX = prey.posX;
                 scopeY = prey.posY;
                 preyMoveScope.Clear();
@@ -409,9 +412,9 @@ namespace HunterGameServer
             else if (hunter.posX == prey.posX && hunter.posY == prey.posY)
             {
                 // 猎物被抓
-                battleOverMsg.res = true;
-                Program.server.Send(preyId, battleOverMsg);
                 battleOverMsg.res = false;
+                Program.server.Send(preyId, battleOverMsg);
+                battleOverMsg.res = true;
                 Program.server.Send(hunterId, battleOverMsg);
                 // 猎人升级
                 UserMgr.Instance.LevUp(hunter.username);
@@ -423,6 +426,7 @@ namespace HunterGameServer
 
         private void Destory()
         {
+            //Console.WriteLine("执行删除程序，回合数"+hunterTurn);
             // 战斗结束后将玩家状态调整为在线，然后关闭房间
             UserMgr.Instance.ChangeUserState(hunter.username, UserState.Online);
             UserMgr.Instance.ChangeUserState(prey.username, UserState.Online);

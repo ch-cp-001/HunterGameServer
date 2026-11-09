@@ -14,7 +14,10 @@ namespace HunterGameServer
             TurnOverMsg msg = message as TurnOverMsg;
             if (msg != null)
             {
-                BattleRoomMgr.Instance.GetBattleRoom(msg.roomId).BattleResCheck();
+                
+                BattleRoom battleRoom = BattleRoomMgr.Instance.GetBattleRoom(msg.roomId);
+                if(battleRoom != null) 
+                    battleRoom.BattleResCheck();
             }
         }
     }
