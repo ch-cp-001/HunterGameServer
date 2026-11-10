@@ -191,8 +191,6 @@ namespace HunterGameServer
         //计算用户可移动范围
         public List<int> GetMoveScope(bool type)
         {
-            int movelength = type ? 2 : 1 + 1;
-            Console.WriteLine(type+"，movelength="+movelength);
             // 猎人
             if (type)
             {
@@ -202,7 +200,7 @@ namespace HunterGameServer
                 scopeX = hunter.posX;
                 scopeY = hunter.posY;
                 hunterMoveScope.Clear();
-                BFS(hunter.posX, hunter.posY, movelength, type);
+                BFS(hunter.posX, hunter.posY, 3, type);
                 return hunterMoveScope;
             }
             // 猎物
@@ -214,7 +212,7 @@ namespace HunterGameServer
                 scopeX = prey.posX;
                 scopeY = prey.posY;
                 preyMoveScope.Clear();
-                BFS(prey.posX, prey.posY, movelength, type);
+                BFS(prey.posX, prey.posY, 2, type);
                 return preyMoveScope;
             }           
             
