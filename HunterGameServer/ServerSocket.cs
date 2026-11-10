@@ -121,7 +121,7 @@ namespace HunterGameServer
             }
             
             clientSocketDic.Clear();
-            socket.Shutdown(SocketShutdown.Both);
+            //socket.Shutdown(SocketShutdown.Both);
             socket.Close();
         }
 
